@@ -12,6 +12,7 @@ This repository is designed to generate Software Bill of Materials (SBOMs) using
 * Detailed Reports: Generate detailed comparisons and summaries of the SBOMs produced by different tools, highlighting strengths and weaknesses.
 * Extensibility: Add support for new tools or languages with minimal configuration changes.
 
+
 ## Run Details
 
 * [Python](https://github.com/sbomify/sbom-benchmarks/tree/master/python)

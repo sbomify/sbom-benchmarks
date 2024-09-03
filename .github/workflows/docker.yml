@@ -1,0 +1,130 @@
+---
+name: Docker
+on: [push]
+
+env:
+  TRIVY_VERSION: 0.54.1
+  SYFT_VERSION: 1.11.1
+  SBOMQS_VERSION: 0.1.9
+
+jobs:
+  trivy:
+    name: Trivy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run:
+          cd docker
+          docker build . -t nginx-test
+
+      - name: Install Trivy
+        run: |
+          curl -L -o /tmp/trivy.tgz \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          tar xvf /tmp/trivy.tgz -C /tmp
+          chmod +x /tmp/trivy
+
+      - name: "CycloneDX: Generate SBOM"
+        run: |
+          /tmp/trivy image \
+            --format cyclonedx \
+            --output container-trivy.cdx.json \
+            nginx-test
+
+      - name: "SPDX: Generate SBOM"
+        run: |
+          /tmp/trivy image \
+            --format spdx-json \
+            --output container-trivy.spdx.json \
+            nginx-test
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy
+          path: "/tmp/python-trivy.*.json"
+
+  syft:
+    name: Syft
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run:
+          cd docker
+          docker build . -t nginx-test
+
+      - name: Install Syft
+        run: |
+          curl -L -o /tmp/syft.tgz \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          tar xvf /tmp/syft.tgz -C /tmp
+          chmod +x /tmp/syft
+
+      - name: "CycloneDX: Generate SBOM"
+        run: |
+          /tmp/syft \
+            phase-1-python \
+            -o cyclonedx-json | jq \
+              > container-syft.cdx.json
+
+      - name: "SPDX: Generate SBOM"
+        run: |
+          /tmp/syft \
+            phase-1-python \
+            -o spdx-json | jq \
+            > container-syft.spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: syft
+          path: "/tmp/python-syft.*.json"
+
+  benchmark:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run:
+          cd docker
+          docker build . -t nginx-test
+
+      # Provide a baseline of what system packages Debian think is installed
+      - name:
+          docker run \
+            --rm nginx-test \
+            dpkg -l > /tmp/baseline.txt
+
+      - name: Upload baseline
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline
+          path: "/tmp/baseline.txt"
+
+  Score:
+    needs:
+     - trivy
+     - syft
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download SBOMs
+        uses: actions/download-artifact@v4
+
+      - name: Install sbomqs
+        run: |
+          curl -L -o /tmp/sbomqs \
+            "https://github.com/interlynk-io/sbomqs/releases/download/v${SBOMQS_VERSION}/sbomqs-linux-amd64"
+          chmod +x /tmp/sbomqs
+
+
+      - name: "Display SBOM quality score through sbomqs"
+        run: |
+          for SBOM in $(find . -iname *.json); do
+            /tmp/sbomqs score "$SBOM"
+          done

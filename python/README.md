@@ -19,3 +19,6 @@ Tools from the sbomify [resource list](https://sbomify.com/resources/#Python), b
 * sbom4python
 * cyclonedx-python
 
+The full process is automated and you can see the exact commands we run in [python.yml](https://github.com/sbomify/sbom-benchmarks/blob/master/.github/workflows/python.yml).
+
+If you look at the [Python CI/CD run](https://github.com/sbomify/sbom-benchmarks/actions/workflows/python.yml), you can also see the quality score of the SBOMs (from `sbomqsq`) as well as downloading the actual SBOMs as artifact.
