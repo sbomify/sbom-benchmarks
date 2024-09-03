@@ -90,6 +90,39 @@ jobs:
           name: container-syft
           path: "/tmp/syft.*.json"
 
+  tern:
+    name: Tern
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        working-directory: "docker"
+        run:
+          docker build . -t nginx-test
+
+      - name: "SPDX: Generate SBOM"
+        uses: philips-labs/tern-action@v1.1.0
+        id: scan
+        with:
+          image: nginx-test
+          format: spdxjson
+          output: tern.spdx.json
+
+      - name: "CycloneDX: Generate SBOM"
+        uses: philips-labs/tern-action@v1.1.0
+        id: scan
+        with:
+          image: nginx-test
+          format: cyclonedxjson
+          output: tern.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-tern
+          path: "tern.*.json"
+
   benchmark:
     name: Benchmark
     runs-on: ubuntu-latest
