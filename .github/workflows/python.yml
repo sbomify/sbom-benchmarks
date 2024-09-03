@@ -69,7 +69,8 @@ jobs:
             /tmp/syft.spdx.json
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4 with:
+        uses: actions/upload-artifact@v4
+        with:
           name: syft
           path: "/tmp/python-syft.*.json"
 
