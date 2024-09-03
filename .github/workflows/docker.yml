@@ -36,14 +36,14 @@ jobs:
         run: |
           /tmp/trivy image \
             --format cyclonedx \
-            --output trivy.cdx.json \
+            --output /tmp/trivy.cdx.json \
             nginx-test
 
       - name: "SPDX: Generate SBOM"
         run: |
           /tmp/trivy image \
             --format spdx-json \
-            --output trivy.spdx.json \
+            --output /tmp/trivy.spdx.json \
             nginx-test
 
       - name: Upload SBOM
@@ -74,15 +74,15 @@ jobs:
         run: |
           /tmp/syft \
             nginx-test \
-            -o cyclonedx-json | jq \
-              > syft.cdx.json
+            -o cyclonedx-json \
+              > /tmp/syft.cdx.json
 
       - name: "SPDX: Generate SBOM"
         run: |
           /tmp/syft \
             nginx-test \
-            -o spdx-json | jq \
-            > syft.spdx.json
+            -o spdx-json \
+            > /tmp/syft.spdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
