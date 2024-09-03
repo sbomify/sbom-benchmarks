@@ -1,5 +1,7 @@
 # SBOM Benchmarking
 
+[![Python](https://github.com/sbomify/sbom-benchmarks/actions/workflows/python.yml/badge.svg)](https://github.com/sbomify/sbom-benchmarks/actions/workflows/python.yml)
+
 This repository is designed to generate Software Bill of Materials (SBOMs) using a comprehensive benchmark across a wide variety of tools on a defined target across multiple programming languages. The goal is to provide a consistent and standardized method for evaluating and comparing the effectiveness and accuracy of various SBOM generation tools, helping users to identify the best tool for their specific needs.
 
 ## Features
@@ -9,3 +11,7 @@ This repository is designed to generate Software Bill of Materials (SBOMs) using
 * Automated Workflow: Easily set up and execute benchmarks with minimal manual intervention.
 * Detailed Reports: Generate detailed comparisons and summaries of the SBOMs produced by different tools, highlighting strengths and weaknesses.
 * Extensibility: Add support for new tools or languages with minimal configuration changes.
+
+## Run Details
+
+* [Python](https://github.com/sbomify/sbom-benchmarks/tree/master/python)

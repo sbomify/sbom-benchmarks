@@ -12,5 +12,10 @@ $ pip freeze > requirements.txt
 
 ## Tools
 
-Tools from the sbomify [resource list](https://sbomify.com/resources/#Python)
+Tools from the sbomify [resource list](https://sbomify.com/resources/#Python), but in short they are:
+
+* Trivy
+* Syft
+* sbom4python
+* cyclonedx-python
 
