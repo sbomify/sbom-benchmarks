@@ -103,25 +103,24 @@ jobs:
 
       - name: "SPDX: Generate SBOM"
         uses: philips-labs/tern-action@v1.1.0
-        id: scan
+        id: scan-spdx
         with:
           image: nginx-test
           format: spdxjson
-          output: tern.spdx.json
 
-      - name: "CycloneDX: Generate SBOM"
-        uses: philips-labs/tern-action@v1.1.0
-        id: scan
-        with:
-          image: nginx-test
-          format: cyclonedxjson
-          output: tern.cdx.json
+      # Supported in tern but not in their GitHub Action
+      #- name: "CycloneDX: Generate SBOM"
+      #  uses: philips-labs/tern-action@v1.1.0
+      #  id: scan-cdx
+      #  with:
+      #    image: nginx-test
+      #    format: cyclonedxjson
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
           name: container-tern
-          path: "tern.*.json"
+          path: ${{ steps.scan-spdx.outputs.file }}
 
   benchmark:
     name: Benchmark
