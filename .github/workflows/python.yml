@@ -1,0 +1,149 @@
+---
+name: Python
+on: [push]
+
+env:
+  TRIVY_VERSION: 0.54.1
+  SYFT_VERSION: 1.11.1
+  CYCLONEDX_PYTHON_VERSION: 4.5.0
+  SBOM4PYTHON_VERSION: 0.11.1
+  SBOMQS_VERSION: 0.1.9
+
+jobs:
+  Trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Trivy
+        run: |
+          curl -L -o /tmp/trivy.tgz \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          tar xvf /tmp/trivy.tgz -C /tmp
+          chmod +x /tmp/trivy
+
+      - name: "CycloneDX: Generate SBOM"
+        run: |
+          /tmp/trivy fs \
+            --format cyclonedx \
+            --output /tmp/python-trivy.cdx.json \
+            python/requirements.txt
+
+      - name: "SPDX: Generate SBOM"
+        run: |
+          /tmp/trivy fs \
+            --format spdx-json \
+            --output /tmp/python-trivy.spdx.json \
+            python/requirements.txt
+
+      - name: Upload Trivy SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy
+          path: "/tmp/python-trivy.*.json"
+
+  Syft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Syft
+        run: |
+          curl -L -o /tmp/syft.tgz \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          tar xvf /tmp/syft.tgz -C /tmp
+          chmod +x /tmp/syft
+
+      - name: "CycloneDX: Generate SBOM"
+        run: |
+          /tmp/syft python/requirements.txt \
+            -o cyclonedx-json > \
+            /tmp/syft.cdx.json
+
+      - name: "SPDX: Generate SBOM"
+        run: |
+          /tmp/syft python/requirements.txt \
+            -o spdx-json > \
+            /tmp/syft.spdx.json
+
+      - name: Upload Trivy SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: syft
+          path: "/tmp/python-syft.*.json"
+
+  CycloneDX Python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CycloneDX Python
+        run: |
+          python -m pip install \
+            cyclonedx-bom==${CYCLONEDX_PYTHON_VERSION}
+
+      - name: "CycloneDX: Generate SBOM"
+        run: |
+          cyclonedx-py requirements \
+            python/requirements.txt \
+            --schema-version 1.6 \
+            > /tmp/python-cyclonedx.cdx.json
+
+      - name: Upload CycloneDX Python SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-cyclonedx
+          path: "/tmp/python-cyclonedx.*.json"
+
+  sbom4python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CycloneDX Python
+        run: |
+          python -m pip install \
+            cyclonedx-bom==${CYCLONEDX_PYTHON_VERSION}
+
+      - name: "CycloneDX: Generate SBOM"
+        run: |
+          sbom4python \
+            -r python/requirements.txt \
+            --sbom cyclonedx \
+            --format json \
+            -o /tmp/python-sbom4python.cdx.json
+
+      - name: "SPDX: Generate SBOM"
+        run: |
+          sbom4python \
+            -r requirements.txt \
+            --sbom spdx \
+            --format json \
+            -o /tmp/python-sbom4python.spdx.json
+
+      - name: Upload sbom4python SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom4python
+          path: "/tmp/python-sbom4python.*.json"
+
+  Score:
+    needs:
+     - Trivy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download SBOMs
+        uses: actions/download-artifact@v4
+
+      - name: Install sbomqs
+        run: |
+          curl -L -o /tmp/sbomqs \
+            "https://github.com/interlynk-io/sbomqs/releases/download/v${SBOMQS_VERSION}/sbomqs-linux-amd64"
+          chmod +x /tmp/sbomqs
+
+
+      - name: "Display SBOM quality score through sbomqs"
+        run: |
+          for SBOM in $(find . -iname *.json); do
+            /tmp/sbomqs score "$SBOM"
+          done
