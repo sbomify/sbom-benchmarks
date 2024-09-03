@@ -1,6 +1,12 @@
 ---
 name: Python
-on: [push]
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'python/**'
+      - '.github/workflows/python.yml'
 
 env:
   TRIVY_VERSION: 0.54.1
