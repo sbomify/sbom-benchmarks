@@ -104,10 +104,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install CycloneDX Python
+      - name: Install sbom4python
         run: |
           python -m pip install \
-            cyclonedx-bom==${CYCLONEDX_PYTHON_VERSION}
+            sbom4python==${SBOM4PYTHON_VERSION}
 
       - name: "CycloneDX: Generate SBOM"
         run: |
