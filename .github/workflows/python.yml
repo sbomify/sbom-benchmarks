@@ -33,21 +33,21 @@ jobs:
         run: |
           /tmp/trivy fs \
             --format cyclonedx \
-            --output /tmp/python-trivy.cdx.json \
+            --output /tmp/trivy.cdx.json \
             python/requirements.txt
 
       - name: "SPDX: Generate SBOM"
         run: |
           /tmp/trivy fs \
             --format spdx-json \
-            --output /tmp/python-trivy.spdx.json \
+            --output /tmp/trivy.spdx.json \
             python/requirements.txt
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
-          name: trivy
-          path: "/tmp/python-trivy.*.json"
+          name: python-trivy
+          path: "/tmp/trivy.*.json"
 
   syft:
     name: Syft
@@ -66,19 +66,19 @@ jobs:
         run: |
           /tmp/syft python/requirements.txt \
             -o cyclonedx-json > \
-            /tmp/python-syft.cdx.json
+            /tmp/syft.cdx.json
 
       - name: "SPDX: Generate SBOM"
         run: |
           /tmp/syft python/requirements.txt \
             -o spdx-json > \
-            /tmp/python-syft.spdx.json
+            /tmp/syft.spdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
-          name: syft
-          path: "/tmp/python-syft.*.json"
+          name: python-syft
+          path: "/tmp/syft.*.json"
 
   cyclonedx-python:
     name: CycloneDX Python
@@ -96,16 +96,16 @@ jobs:
           cyclonedx-py requirements \
             python/requirements.txt \
             --schema-version 1.6 \
-            > /tmp/python-cyclonedx.cdx.json
+            > /tmp/cyclonedx.cdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
           name: python-cyclonedx
-          path: "/tmp/python-cyclonedx.*.json"
+          path: "/tmp/cyclonedx.*.json"
 
   sbom4python:
-    name: SBOM4Python
+    name: sbom4python
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -121,7 +121,7 @@ jobs:
             -r python/requirements.txt \
             --sbom cyclonedx \
             --format json \
-            -o /tmp/python-sbom4python.cdx.json
+            -o /tmp/sbom4python.cdx.json
 
       - name: "SPDX: Generate SBOM"
         run: |
@@ -129,13 +129,13 @@ jobs:
             -r requirements.txt \
             --sbom spdx \
             --format json \
-            -o /tmp/python-sbom4python.spdx.json
+            -o /tmp/sbom4python.spdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
           name: sbom4python
-          path: "/tmp/python-sbom4python.*.json"
+          path: "/tmp/sbom4python.*.json"
 
   Score:
     needs:

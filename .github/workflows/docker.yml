@@ -36,21 +36,21 @@ jobs:
         run: |
           /tmp/trivy image \
             --format cyclonedx \
-            --output container-trivy.cdx.json \
+            --output trivy.cdx.json \
             nginx-test
 
       - name: "SPDX: Generate SBOM"
         run: |
           /tmp/trivy image \
             --format spdx-json \
-            --output container-trivy.spdx.json \
+            --output trivy.spdx.json \
             nginx-test
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
-          name: trivy
-          path: "/tmp/python-trivy.*.json"
+          name: container-trivy
+          path: "/tmp/trivy.*.json"
 
   syft:
     name: Syft
@@ -73,22 +73,22 @@ jobs:
       - name: "CycloneDX: Generate SBOM"
         run: |
           /tmp/syft \
-            phase-1-python \
+            nginx-test \
             -o cyclonedx-json | jq \
-              > container-syft.cdx.json
+              > syft.cdx.json
 
       - name: "SPDX: Generate SBOM"
         run: |
           /tmp/syft \
-            phase-1-python \
+            nginx-test \
             -o spdx-json | jq \
-            > container-syft.spdx.json
+            > syft.spdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
-          name: syft
-          path: "/tmp/python-syft.*.json"
+          name: container-syft
+          path: "/tmp/syft.*.json"
 
   benchmark:
     name: Benchmark
