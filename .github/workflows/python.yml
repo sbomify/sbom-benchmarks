@@ -10,7 +10,8 @@ env:
   SBOMQS_VERSION: 0.1.9
 
 jobs:
-  Trivy:
+  trivy:
+    name: Trivy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,13 +37,14 @@ jobs:
             --output /tmp/python-trivy.spdx.json \
             python/requirements.txt
 
-      - name: Upload Trivy SBOM
+      - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
           name: trivy
           path: "/tmp/python-trivy.*.json"
 
-  Syft:
+  syft:
+    name: Syft
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,13 +68,13 @@ jobs:
             -o spdx-json > \
             /tmp/syft.spdx.json
 
-      - name: Upload Trivy SBOM
-        uses: actions/upload-artifact@v4
-        with:
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4 with:
           name: syft
           path: "/tmp/python-syft.*.json"
 
-  CycloneDX Python:
+  cyclonedx-python:
+    name: CycloneDX Python
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -89,13 +91,14 @@ jobs:
             --schema-version 1.6 \
             > /tmp/python-cyclonedx.cdx.json
 
-      - name: Upload CycloneDX Python SBOM
+      - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
           name: python-cyclonedx
           path: "/tmp/python-cyclonedx.*.json"
 
   sbom4python:
+    name: SBOM4Python
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -121,7 +124,7 @@ jobs:
             --format json \
             -o /tmp/python-sbom4python.spdx.json
 
-      - name: Upload sbom4python SBOM
+      - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
           name: sbom4python
@@ -129,7 +132,10 @@ jobs:
 
   Score:
     needs:
-     - Trivy
+     - trivy
+     - syft
+     - sbom4python
+     - cyclonedx-python
     runs-on: ubuntu-latest
     steps:
       - name: Download SBOMs
