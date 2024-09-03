@@ -1,4 +1,5 @@
 # SBOM Generation for Python
+[![Python](https://github.com/sbomify/sbom-benchmarks/actions/workflows/python.yml/badge.svg)](https://github.com/sbomify/sbom-benchmarks/actions/workflows/python.yml)
 
 ## Setup
 
