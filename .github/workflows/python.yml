@@ -60,13 +60,13 @@ jobs:
         run: |
           /tmp/syft python/requirements.txt \
             -o cyclonedx-json > \
-            /tmp/syft.cdx.json
+            /tmp/python-syft.cdx.json
 
       - name: "SPDX: Generate SBOM"
         run: |
           /tmp/syft python/requirements.txt \
             -o spdx-json > \
-            /tmp/syft.spdx.json
+            /tmp/python-syft.spdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
