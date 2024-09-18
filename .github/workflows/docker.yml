@@ -106,7 +106,8 @@ jobs:
         run: |
           docker run \
             --rm nginx-test \
-            dpkg -l > /tmp/baseline.txt
+            dpkg-query -W -f='${binary:Package} ${Version}\n' | sort > /tmp/baseline.txt
+
       - name: Upload baseline
         uses: actions/upload-artifact@v4
         with:
@@ -128,6 +129,19 @@ jobs:
             "https://github.com/interlynk-io/sbomqs/releases/download/v${SBOMQS_VERSION}/sbomqs-linux-amd64"
           chmod +x /tmp/sbomqs
 
+      - name: "Generate Summary Table"
+        run: |
+          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
+
+          # Header
+          echo "| Tool | Format | Packages | Unique Packages | Duplication % |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| -- | -- | -- | -- | -- |" >> ${GITHUB_STEP_SUMMARY}
+
+          # Baseline
+          SYSTEM_BASELINE=$(cat ./baseline/baseline.txt | wc -l)
+          echo "| System Baseline | N/A | $SYSTEM_BASELINE | $SYSTEM_BASELINE | 0% |" >> ${GITHUB_STEP_SUMMARY}
+
+          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
 
       - name: "Display SBOM quality score through sbomqs"
         run: |
