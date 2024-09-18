@@ -159,14 +159,14 @@ jobs:
           SYFT_CDX_PATH="container-syft/syft.cdx.json"
           SYFT_CDX_TOTAL=$(jq '.components[] | .name' $SYFT_CDX_PATH | wc -l)
           SYFT_CDX_UNIQUE=$(jq '.components[] | .name' $SYFT_CDX_PATH | uniq | wc -l)
-          SYFT_CDX_SBOMQS=$(sbomqs score $SYFT_CDX_PATH)
+          SYFT_CDX_SBOMQS=$(/tmp/sbomqs score $SYFT_CDX_PATH)
           SYFT_CDX_VERSION=$(cat $SYFT_CDX_SBOMQS | jq -r '.files[0].spec_version')
           SYFT_CDX_QUALITY_SCORE=$(cat $SYFT_CDX_SBOMQS | jq -r '.files[0].avg_score')
 
           SYFT_SPDX_PATH="container-syft/syft.spdx.json"
           SYFT_SPDX_TOTAL=$(jq '.packages[] | .name' $SYFT_SPDX_PATH | wc -l)
           SYFT_SPDX_UNIQUE=$(jq '.packages[] | .name' $SYFT_SPDX_PATH | uniq | wc -l)
-          SYFT_SPDX_SBOMQS=$(sbomqs score $SYFT_SPDX_PATH)
+          SYFT_SPDX_SBOMQS=$(/tmp/sbomqs score $SYFT_SPDX_PATH)
           SYFT_SPDX_VERSION=$(cat $SYFT_SPDX_SBOMQS | jq -r '.files[0].spec_version')
           SYFT_SPDX_QUALITY_SCORE=$(cat $SYFT_SPDX_SBOMQS | jq -r '.files[0].avg_score')
 
@@ -174,13 +174,14 @@ jobs:
           TRIVY_CDX_PATH="container-trivy/trivy.cdx.json"
           TRIVY_CDX_TOTAL=$(jq '.components[] | .name' $TRIVY_CDX_PATH | wc -l)
           TRIVY_CDX_UNIQUE=$(jq '.components[] | .name' $TRIVY_CDX_PATH | uniq | wc -l)
-          TRIVY_SPDX_SBOMQS=$(sbomqs score $TRIVY_CDX_PATH)
+          TRIVY_SPDX_SBOMQS=$(/tmp/sbomqs score $TRIVY_CDX_PATH)
           TRIVY_CDX_VERSION=$(cat $TRIVY_CDX_SBOMQS | jq -r '.files[0].spec_version')
           TRIVY_CDX_QUALITY_SCORE=$(cat $TRIVY_CDX_SBOMQS | jq -r '.files[0].avg_score')
 
           TRIVY_SPDX_PATH="container-trivy/trivy.spdx.json"
           TRIVY_SPDX_TOTAL=$(jq '.packages[] | .name' $TRIVY_SPDX_PATH | wc -l)
           TRIVY_SPDX_UNIQUE=$(jq '.packages[] | .name' $TRIVY_SPDX_PATH | uniq | wc -l)
+          TRIVY_SPDX_SBOMQS=$(/tmp/sbomqs score $TRIVY_SPDX_PATH)
           TRIVY_SPDX_VERSION=$(cat $TRIVY_SPDX_SBOMQS | jq -r '.files[0].spec_version')
           TRIVY_SPDX_QUALITY_SCORE=$(cat $TRIVY_SPDX_SBOMQS | jq -r '.files[0].avg_score')
 
