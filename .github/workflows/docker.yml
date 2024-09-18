@@ -157,6 +157,7 @@ jobs:
 
           # Syft
           SYFT_CDX=$(jq '.components[] | .name' container-syft/syft.cdx.json)
+          echo $SYFT_CDX
           SYFT_CDX_TOTAL=$(echo $SYFT_CDX | wc -l)
           SYFT_CDX_UNIQUE=$(echo $SYFT_CDX | uniq | wc -l)
 
@@ -176,11 +177,11 @@ jobs:
 
       - name: "Display SBOM quality score through sbomqs"
         run: |
-          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
           echo '<details>' >> ${GITHUB_STEP_SUMMARY}
           echo '<summary>SBOM Quality Score</summary>' >> ${GITHUB_STEP_SUMMARY}
+          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
           for SBOM in $(find . -iname *.json); do
             /tmp/sbomqs score "$SBOM" >> ${GITHUB_STEP_SUMMARY}
           done
-          echo '</details>' >> ${GITHUB_STEP_SUMMARY}
           echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
+          echo '</details>' >> ${GITHUB_STEP_SUMMARY}
