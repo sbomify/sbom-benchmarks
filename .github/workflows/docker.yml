@@ -142,11 +142,11 @@ jobs:
 
       - name: "Display SBOM quality score through sbomqs"
         run: |
-          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
-          <details>
-          <summary>SBOM Quality Score</summary>
+          echo '<details>' >> ${GITHUB_STEP_SUMMARY}
+          echo '<summary>SBOM Quality Score</summary>' >> ${GITHUB_STEP_SUMMARY}
           for SBOM in $(find . -iname *.json); do
+            echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
             /tmp/sbomqs score "$SBOM" >> ${GITHUB_STEP_SUMMARY}
+            echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
           done
-          </details>
-          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
+          echo '</details>' >> ${GITHUB_STEP_SUMMARY}
