@@ -158,6 +158,9 @@ jobs:
 
       - name: "Generate Summary Table"
         run: |
+          # DEBUG
+          find .
+
           calculate_duplication_percentage() {
             local total=$1
             local unique=$2
@@ -178,8 +181,6 @@ jobs:
             echo "$duplication_percentage%"
           }
 
-          # DEBUG
-          find . -iname *.json
 
 
           # Baseline
