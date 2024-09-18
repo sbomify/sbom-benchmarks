@@ -126,7 +126,7 @@ jobs:
       - name: "SPDX: Generate SBOM"
         run: |
           sbom4python \
-            -r requirements.txt \
+            -r python/requirements.txt \
             --sbom spdx \
             --format json \
             -o /tmp/sbom4python.spdx.json
@@ -148,17 +148,77 @@ jobs:
       - name: Download SBOMs
         uses: actions/download-artifact@v4
 
+      - uses: actions/checkout@v4
+
       - name: Install sbomqs
         run: |
           curl -L -o /tmp/sbomqs \
             "https://github.com/interlynk-io/sbomqs/releases/download/v${SBOMQS_VERSION}/sbomqs-linux-amd64"
           chmod +x /tmp/sbomqs
 
-
-      - name: "Display SBOM quality score through sbomqs"
+      - name: "Generate Summary Table"
         run: |
-          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
-          for SBOM in $(find . -iname *.json); do
-            /tmp/sbomqs score "$SBOM" >> ${GITHUB_STEP_SUMMARY}
-          done
-          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
+          calculate_duplication_percentage() {
+            local total=$1
+            local unique=$2
+
+            if [ "$total" -eq 0 ]; then
+              echo "Duplication Percentage: N/A (Total count is zero)"
+              return 1
+            fi
+
+            local duplicates=$((total - unique))
+
+            if [ "$duplicates" -lt 0 ]; then
+              duplicates=0
+            fi
+
+            local duplication_percentage=$(echo "scale=2; ($duplicates / $total) * 100" | bc)
+
+            echo "$duplication_percentage%"
+          }
+
+          # Baseline
+          SYSTEM_BASELINE=$(cat python/requirements.txt | wc -l)
+
+          # Syft
+          SYFT_CDX_PATH="python-syft/syft.spdx.json"
+          SYFT_CDX_TOTAL=$(jq '.components[] | .name' $SYFT_CDX_PATH | wc -l)
+          SYFT_CDX_UNIQUE=$(jq '.components[] | .name' $SYFT_CDX_PATH | uniq | wc -l)
+          SYFT_CDX_SBOMQS=$(/tmp/sbomqs score $SYFT_CDX_PATH -j)
+          SYFT_CDX_VERSION=$(echo $SYFT_CDX_SBOMQS | jq -r '.files[0].spec_version')
+          SYFT_CDX_QUALITY_SCORE=$(echo $SYFT_CDX_SBOMQS | jq -r '.files[0].avg_score')
+
+          SYFT_SPDX_PATH="python-syft/syft.cdx.json"
+          SYFT_SPDX_TOTAL=$(jq '.packages[] | .name' $SYFT_SPDX_PATH | wc -l)
+          SYFT_SPDX_UNIQUE=$(jq '.packages[] | .name' $SYFT_SPDX_PATH | uniq | wc -l)
+          SYFT_SPDX_SBOMQS=$(/tmp/sbomqs score $SYFT_SPDX_PATH -j)
+          SYFT_SPDX_VERSION=$(echo $SYFT_SPDX_SBOMQS | jq -r '.files[0].spec_version')
+          SYFT_SPDX_QUALITY_SCORE=$(echo $SYFT_SPDX_SBOMQS | jq -r '.files[0].avg_score')
+
+          # Trivy
+          TRIVY_CDX_PATH="python-trivy/trivy.cdx.json"
+          TRIVY_CDX_TOTAL=$(jq '.components[] | .name' $TRIVY_CDX_PATH | wc -l)
+          TRIVY_CDX_UNIQUE=$(jq '.components[] | .name' $TRIVY_CDX_PATH | uniq | wc -l)
+          TRIVY_CDX_SBOMQS=$(/tmp/sbomqs score $TRIVY_CDX_PATH -j)
+          TRIVY_CDX_VERSION=$(echo $TRIVY_CDX_SBOMQS | jq -r '.files[0].spec_version')
+          TRIVY_CDX_QUALITY_SCORE=$(echo $TRIVY_CDX_SBOMQS | jq -r '.files[0].avg_score')
+
+          TRIVY_SPDX_PATH="python-trivy/trivy.spdx.json"
+          TRIVY_SPDX_TOTAL=$(jq '.packages[] | .name' $TRIVY_SPDX_PATH | wc -l)
+          TRIVY_SPDX_UNIQUE=$(jq '.packages[] | .name' $TRIVY_SPDX_PATH | uniq | wc -l)
+          TRIVY_SPDX_SBOMQS=$(/tmp/sbomqs score $TRIVY_SPDX_PATH -j)
+          TRIVY_SPDX_VERSION=$(echo $TRIVY_SPDX_SBOMQS | jq -r '.files[0].spec_version')
+          TRIVY_SPDX_QUALITY_SCORE=$(echo $TRIVY_SPDX_SBOMQS | jq -r '.files[0].avg_score')
+
+
+          # Header
+          echo "| Tool | Format | Packages | Unique Packages | Duplication % | Avg Quality Score |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| -- | -- | -- | -- | -- |-- |" >> ${GITHUB_STEP_SUMMARY}
+
+          # Construct table
+          echo "| System Baseline | N/A | $SYSTEM_BASELINE | $SYSTEM_BASELINE | 0% | N/A |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| Syft $SYFT_VERSION | CycloneDX $SYFT_CDX_VERSION | $SYFT_CDX_TOTAL | $SYFT_CDX_UNIQUE | $(calculate_duplication_percentage $SYFT_CDX_TOTAL $SYFT_CDX_UNIQUE) | $SYFT_CDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| Trivy $TRIVY_VERSION | CycloneDX $TRIVY_CDX_VERSION | $TRIVY_CDX_TOTAL | $TRIVY_CDX_UNIQUE | $(calculate_duplication_percentage $TRIVY_CDX_TOTAL $TRIVY_CDX_UNIQUE) | $TRIVY_CDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| Syft $SYFT_VERSION | SPDX $SYFT_SPDX_VERSION | $SYFT_SPDX_TOTAL | $SYFT_SPDX_UNIQUE | $(calculate_duplication_percentage $SYFT_SPDX_TOTAL $SYFT_SPDX_UNIQUE) | $SYFT_SPDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| Trivy $TRIVY_VERSION | SPDX $TRIVY_SPDX_VERSION | $TRIVY_SPDX_TOTAL | $TRIVY_SPDX_UNIQUE | $(calculate_duplication_percentage $TRIVY_SPDX_TOTAL $TRIVY_SPDX_UNIQUE)| $TRIVY_SPDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
