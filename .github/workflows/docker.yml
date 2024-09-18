@@ -174,7 +174,7 @@ jobs:
           TRIVY_CDX_PATH="container-trivy/trivy.cdx.json"
           TRIVY_CDX_TOTAL=$(jq '.components[] | .name' $TRIVY_CDX_PATH | wc -l)
           TRIVY_CDX_UNIQUE=$(jq '.components[] | .name' $TRIVY_CDX_PATH | uniq | wc -l)
-          TRIVY_SPDX_SBOMQS=$(/tmp/sbomqs score $TRIVY_CDX_PATH)
+          TRIVY_CDX_SBOMQS=$(/tmp/sbomqs score $TRIVY_CDX_PATH)
           TRIVY_CDX_VERSION=$(echo $TRIVY_CDX_SBOMQS | jq -r '.files[0].spec_version')
           TRIVY_CDX_QUALITY_SCORE=$(echo $TRIVY_CDX_SBOMQS | jq -r '.files[0].avg_score')
 
@@ -192,7 +192,7 @@ jobs:
 
           # Construct table
           echo "| System Baseline | N/A | $SYSTEM_BASELINE | $SYSTEM_BASELINE | 0% | N/A |" >> ${GITHUB_STEP_SUMMARY}
-          echo "| Syft $SYFT_VERSION | CycloneDX $SYFT_CDX_VERSION | $SYFT_CDX_TOTAL | $SYFT_CDX_UNIQUE | $(calculate_duplication_percentage $SYFT_CDX_TOTAL $SYFT_CDX_UNIQUE) | $SYFT_CDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
-          echo "| Trivy $TRIVY_VERSION | CycloneDX $TRIVY_CDX_VERSION | $TRIVY_CDX_TOTAL | $TRIVY_CDX_UNIQUE | $(calculate_duplication_percentage $TRIVY_CDX_TOTAL $TRIVY_CDX_UNIQUE) | $TRIVY_CDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
-          echo "| Syft $SYFT_VERSION | SPDX $SYFT_SPDX_VERSION | $SYFT_SPDX_TOTAL | $SYFT_SPDX_UNIQUE | $(calculate_duplication_percentage $SYFT_SPDX_TOTAL $SYFT_SPDX_UNIQUE) | $SYFT_SPDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
-          echo "| Trivy $TRIVY_VERSION | SPDX | $TRIVY_SPDX_TOTAL | $TRIVY_SPDX_UNIQUE | $(calculate_duplication_percentage $TRIVY_SPDX_TOTAL $TRIVY_SPDX_UNIQUE)| $TRIVY_SPDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| Syft $SYFT_VERSION | CycloneDX $SYFT_CDX_VERSION | $SYFT_CDX_TOTAL | $SYFT_CDX_UNIQUE | $(calculate_duplication_percentage $SYFT_CDX_TOTAL $SYFT_CDX_UNIQUE) |  |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| Trivy $TRIVY_VERSION | CycloneDX $TRIVY_CDX_VERSION | $TRIVY_CDX_TOTAL | $TRIVY_CDX_UNIQUE | $(calculate_duplication_percentage $TRIVY_CDX_TOTAL $TRIVY_CDX_UNIQUE) | |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| Syft $SYFT_VERSION | SPDX $SYFT_SPDX_VERSION | $SYFT_SPDX_TOTAL | $SYFT_SPDX_UNIQUE | $(calculate_duplication_percentage $SYFT_SPDX_TOTAL $SYFT_SPDX_UNIQUE) | |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| Trivy $TRIVY_VERSION | SPDX $TRIVY_SPDX_VERSION | $TRIVY_SPDX_TOTAL | $TRIVY_SPDX_UNIQUE | $(calculate_duplication_percentage $TRIVY_SPDX_TOTAL $TRIVY_SPDX_UNIQUE)|  |" >> ${GITHUB_STEP_SUMMARY}
