@@ -132,21 +132,55 @@ jobs:
 
       - name: "Generate Summary Table"
         run: |
+          calculate_duplication_percentage() {
+            local total=$1
+            local unique=$2
+
+            if [ "$total" -eq 0 ]; then
+              echo "Duplication Percentage: N/A (Total count is zero)"
+              return 1
+            fi
+
+            local duplicates=$((total - unique))
+
+            if [ "$duplicates" -lt 0 ]; then
+              duplicates=0
+            fi
+
+            local duplication_percentage=$(echo "scale=2; ($duplicates / $total) * 100" | bc)
+
+            echo "$duplication_percentage%"
+          }
+
+          # Baseline
+          SYSTEM_BASELINE=$(cat baseline/baseline.txt | wc -l)
+
+          # Syft
+          SYFT_CDX=$(jq '.components[] | .name' container-syft/syft.cdx.json)
+          SYFT_CDX_TOTAL=$(echo $SYFT_CDX | wc -l)
+          SYFT_CDX_UNIQUE=$(echo $SYFT_CDX | uniq | wc -l)
+
+          SYFT_SPDX=$(jq '.packages[] | .name' container-syft/syft.spdx.json)
+          SYFT_SPDX_TOTAL=$(echo $SYFT_SPDX | wc -l)
+          SYFT_SPDX_UNIQUE=$(echo $SYFT_SPDX | uniq | wc -l)
+
           # Header
           echo "| Tool | Format | Packages | Unique Packages | Duplication % |" >> ${GITHUB_STEP_SUMMARY}
           echo "| -- | -- | -- | -- | -- |" >> ${GITHUB_STEP_SUMMARY}
 
-          # Baseline
-          SYSTEM_BASELINE=$(cat ./baseline/baseline.txt | wc -l)
+          # Construct table
           echo "| System Baseline | N/A | $SYSTEM_BASELINE | $SYSTEM_BASELINE | 0% |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| Syft | CycloneDX | $SYFT_CDX_TOTAL | $SYFT_CDX_UNIQUE | $(calculate_duplication_percentage $SYFT_CDX_TOTAL $SYFT_CDX_UNIQUE) |" >> ${GITHUB_STEP_SUMMARY}
+
+
 
       - name: "Display SBOM quality score through sbomqs"
         run: |
+          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
           echo '<details>' >> ${GITHUB_STEP_SUMMARY}
           echo '<summary>SBOM Quality Score</summary>' >> ${GITHUB_STEP_SUMMARY}
           for SBOM in $(find . -iname *.json); do
-            echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
             /tmp/sbomqs score "$SBOM" >> ${GITHUB_STEP_SUMMARY}
-            echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
           done
           echo '</details>' >> ${GITHUB_STEP_SUMMARY}
+          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
