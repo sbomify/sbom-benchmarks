@@ -190,7 +190,7 @@ jobs:
           echo "| -- | -- | -- | -- | -- |" >> ${GITHUB_STEP_SUMMARY}
 
           # Construct table
-          echo "| System Baseline | N/A | $SYSTEM_BASELINE | $SYSTEM_BASELINE | 0% |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| System Baseline | N/A | $SYSTEM_BASELINE | $SYSTEM_BASELINE | 0% | N/A |" >> ${GITHUB_STEP_SUMMARY}
           echo "| Syft $SYFT_VERSION | CycloneDX $SYFT_CDX_VERSION | $SYFT_CDX_TOTAL | $SYFT_CDX_UNIQUE | $(calculate_duplication_percentage $SYFT_CDX_TOTAL $SYFT_CDX_UNIQUE) | $SYFT_CDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
           echo "| Trivy $TRIVY_VERSION | CycloneDX $TRIVY_CDX_VERSION | $TRIVY_CDX_TOTAL | $TRIVY_CDX_UNIQUE | $(calculate_duplication_percentage $TRIVY_CDX_TOTAL $TRIVY_CDX_UNIQUE) | $TRIVY_CDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
           echo "| Syft $SYFT_VERSION | SPDX $SYFT_SPDX_VERSION | $SYFT_SPDX_TOTAL | $SYFT_SPDX_UNIQUE | $(calculate_duplication_percentage $SYFT_SPDX_TOTAL $SYFT_SPDX_UNIQUE) | $SYFT_SPDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
