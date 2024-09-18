@@ -178,6 +178,10 @@ jobs:
             echo "$duplication_percentage%"
           }
 
+          # DEBUG
+          find . -iname *.json
+
+
           # Baseline
           SYSTEM_BASELINE=$(cat python/requirements.txt | wc -l)
 
@@ -211,6 +215,20 @@ jobs:
           TRIVY_SPDX_VERSION=$(echo $TRIVY_SPDX_SBOMQS | jq -r '.files[0].spec_version')
           TRIVY_SPDX_QUALITY_SCORE=$(echo $TRIVY_SPDX_SBOMQS | jq -r '.files[0].avg_score')
 
+          # sbom4python
+          SBOM4PYTHON_CDX_PATH="python-trivy/trivy.cdx.json"
+          SBOM4PYTHON_CDX_TOTAL=$(jq '.components[] | .name' $SBOM4PYTHON_CDX_PATH | wc -l)
+          SBOM4PYTHON_CDX_UNIQUE=$(jq '.components[] | .name' $SBOM4PYTHON_CDX_PATH | uniq | wc -l)
+          SBOM4PYTHON_CDX_SBOMQS=$(/tmp/sbomqs score $SBOM4PYTHON_CDX_PATH -j)
+          SBOM4PYTHON_CDX_VERSION=$(echo $SBOM4PYTHON_CDX_SBOMQS | jq -r '.files[0].spec_version')
+          SBOM4PYTHON_CDX_QUALITY_SCORE=$(echo $SBOM4PYTHON_CDX_SBOMQS | jq -r '.files[0].avg_score')
+
+          SBOM4PYTHON_SPDX_PATH="python-trivy/trivy.spdx.json"
+          SBOM4PYTHON_SPDX_TOTAL=$(jq '.packages[] | .name' $SBOM4PYTHON_SPDX_PATH | wc -l)
+          SBOM4PYTHON_SPDX_UNIQUE=$(jq '.packages[] | .name' $SBOM4PYTHON_SPDX_PATH | uniq | wc -l)
+          SBOM4PYTHON_SPDX_SBOMQS=$(/tmp/sbomqs score $SBOM4PYTHON_SPDX_PATH -j)
+          SBOM4PYTHON_SPDX_VERSION=$(echo $SBOM4PYTHON_SPDX_SBOMQS | jq -r '.files[0].spec_version')
+          SBOM4PYTHON_SPDX_QUALITY_SCORE=$(echo $SBOM4PYTHON_SPDX_SBOMQS | jq -r '.files[0].avg_score')
 
           # Header
           echo "| Tool | Format | Packages | Unique Packages | Duplication % | Avg Quality Score |" >> ${GITHUB_STEP_SUMMARY}
