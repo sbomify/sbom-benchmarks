@@ -232,6 +232,14 @@ jobs:
           SBOM4PYTHON_SPDX_VERSION=$(echo $SBOM4PYTHON_SPDX_SBOMQS | jq -r '.files[0].spec_version')
           SBOM4PYTHON_SPDX_QUALITY_SCORE=$(echo $SBOM4PYTHON_SPDX_SBOMQS | jq -r '.files[0].avg_score')
 
+          # CycloneDX Python
+          PYTHON_CYCLONEDX_CDX_PATH="python-cyclonedx/cyclonedx.cdx.json"
+          PYTHON_CYCLONEDX_CDX_TOTAL=$(jq '.components[] | .name' $PYTHON_CYCLONEDX_CDX_PATH | wc -l)
+          PYTHON_CYCLONEDX_CDX_UNIQUE=$(jq '.components[] | .name' $PYTHON_CYCLONEDX_CDX_PATH | uniq | wc -l)
+          PYTHON_CYCLONEDX_CDX_SBOMQS=$(/tmp/sbomqs score $PYTHON_CYCLONEDX_CDX_PATH -j)
+          PYTHON_CYCLONEDX_CDX_VERSION=$(echo $PYTHON_CYCLONEDX_CDX_SBOMQS | jq -r '.files[0].spec_version')
+          PYTHON_CYCLONEDX_CDX_QUALITY_SCORE=$(echo $PYTHON_CYCLONEDX_CDX_SBOMQS | jq -r '.files[0].avg_score')
+
           # Header
           echo "| Tool | Format | Packages | Unique Packages | Duplication % | Avg Quality Score |" >> ${GITHUB_STEP_SUMMARY}
           echo "| -- | -- | -- | -- | -- |-- |" >> ${GITHUB_STEP_SUMMARY}
@@ -240,5 +248,8 @@ jobs:
           echo "| System Baseline | N/A | $SYSTEM_BASELINE | $SYSTEM_BASELINE | 0% | N/A |" >> ${GITHUB_STEP_SUMMARY}
           echo "| Syft $SYFT_VERSION | CycloneDX $SYFT_CDX_VERSION | $SYFT_CDX_TOTAL | $SYFT_CDX_UNIQUE | $(calculate_duplication_percentage $SYFT_CDX_TOTAL $SYFT_CDX_UNIQUE) | $SYFT_CDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
           echo "| Trivy $TRIVY_VERSION | CycloneDX $TRIVY_CDX_VERSION | $TRIVY_CDX_TOTAL | $TRIVY_CDX_UNIQUE | $(calculate_duplication_percentage $TRIVY_CDX_TOTAL $TRIVY_CDX_UNIQUE) | $TRIVY_CDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| sbom4python $SBOM4PYTHON_VERSION | CycloneDX $SBOM4PYTHON_CDX_VERSION | $SBOM4PYTHON_CDX_TOTAL | $SBOM4PYTHON_CDX_UNIQUE | $(calculate_duplication_percentage $SBOM4PYTHON_CDX_TOTAL $SBOM4PYTHON_CDX_UNIQUE) | $SBOM4PYTHON_CDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| python-cyclonedx $PYTHON_CYCLONEDX_VERSION | CycloneDX $PYTHON_CYCLONEDX_CDX_VERSION | $PYTHON_CYCLONEDX_CDX_TOTAL | $PYTHON_CYCLONEDX_CDX_UNIQUE | $(calculate_duplication_percentage $PYTHON_CYCLONEDX_CDX_TOTAL $PYTHON_CYCLONEDX_CDX_UNIQUE) | $PYTHON_CYCLONEDX_CDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
           echo "| Syft $SYFT_VERSION | SPDX $SYFT_SPDX_VERSION | $SYFT_SPDX_TOTAL | $SYFT_SPDX_UNIQUE | $(calculate_duplication_percentage $SYFT_SPDX_TOTAL $SYFT_SPDX_UNIQUE) | $SYFT_SPDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
           echo "| Trivy $TRIVY_VERSION | SPDX $TRIVY_SPDX_VERSION | $TRIVY_SPDX_TOTAL | $TRIVY_SPDX_UNIQUE | $(calculate_duplication_percentage $TRIVY_SPDX_TOTAL $TRIVY_SPDX_UNIQUE)| $TRIVY_SPDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
+          echo "| sbom4python $SBOM4PYTHON_VERSION | SPDX $SBOM4PYTHON_SPDX_VERSION | $SBOM4PYTHON_SPDX_TOTAL | $SBOM4PYTHON_SPDX_UNIQUE | $(calculate_duplication_percentage $SBOM4PYTHON_SPDX_TOTAL $SBOM4PYTHON_SPDX_UNIQUE)| $SBOM4PYTHON_SPDX_QUALITY_SCORE |" >> ${GITHUB_STEP_SUMMARY}
