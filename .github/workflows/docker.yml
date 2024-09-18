@@ -131,8 +131,6 @@ jobs:
 
       - name: "Generate Summary Table"
         run: |
-          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
-
           # Header
           echo "| Tool | Format | Packages | Unique Packages | Duplication % |" >> ${GITHUB_STEP_SUMMARY}
           echo "| -- | -- | -- | -- | -- |" >> ${GITHUB_STEP_SUMMARY}
@@ -141,12 +139,13 @@ jobs:
           SYSTEM_BASELINE=$(cat ./baseline/baseline.txt | wc -l)
           echo "| System Baseline | N/A | $SYSTEM_BASELINE | $SYSTEM_BASELINE | 0% |" >> ${GITHUB_STEP_SUMMARY}
 
-          echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
-
       - name: "Display SBOM quality score through sbomqs"
         run: |
           echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
+          <details>
+          <summary>SBOM Quality Score (through `sbomqs`)</summary>
           for SBOM in $(find . -iname *.json); do
             /tmp/sbomqs score "$SBOM" >> ${GITHUB_STEP_SUMMARY}
           done
+          </details>
           echo \`\`\` >> ${GITHUB_STEP_SUMMARY}
