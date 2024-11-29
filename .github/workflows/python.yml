@@ -62,13 +62,13 @@ jobs:
           tar xvf /tmp/syft.tgz -C /tmp
           chmod +x /tmp/syft
 
-      - name: "CycloneDX: Generate SBOM"
+      - name: "CycloneDX: Generate SBOM from lockfile"
         run: |
           /tmp/syft python/requirements.txt \
             -o cyclonedx-json > \
             /tmp/syft.cdx.json
 
-      - name: "SPDX: Generate SBOM"
+      - name: "SPDX: Generate SBOM from lockfile"
         run: |
           /tmp/syft python/requirements.txt \
             -o spdx-json > \
@@ -91,12 +91,27 @@ jobs:
           python -m pip install \
             cyclonedx-bom==${CYCLONEDX_PYTHON_VERSION}
 
-      - name: "CycloneDX: Generate SBOM"
+      - name: "CycloneDX: Generate SBOM from lockfile"
         run: |
           cyclonedx-py requirements \
             python/requirements.txt \
             --schema-version 1.6 \
             > /tmp/cyclonedx.cdx.json
+
+      - name: "Prepare virtual environment"
+        run: |
+          python -m pip install \
+            virtualenv
+          virtualenv venv
+          source venv/bin/activate
+          pip install -r python/requirements.txt
+
+      - name: "CycloneDX: Generate SBOM from venv"
+        run: |
+          cyclonedx-py environment \
+            venv \
+            --schema-version 1.6 \
+            > /tmp/cyclonedx-venv.cdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
@@ -115,7 +130,7 @@ jobs:
           python -m pip install \
             sbom4python==${SBOM4PYTHON_VERSION}
 
-      - name: "CycloneDX: Generate SBOM"
+      - name: "CycloneDX: Generate SBOM from lockfile"
         run: |
           sbom4python \
             -r python/requirements.txt \
@@ -123,7 +138,7 @@ jobs:
             --format json \
             -o /tmp/sbom4python.cdx.json
 
-      - name: "SPDX: Generate SBOM"
+      - name: "SPDX: Generate SBOM from lockfile"
         run: |
           sbom4python \
             -r python/requirements.txt \
