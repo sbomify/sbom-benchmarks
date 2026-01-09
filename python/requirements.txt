@@ -1,3 +1,7 @@
+# Intentionally minimal - only direct dependencies listed.
+# This tests SBOM tools' ability to resolve transitive dependencies.
+# A complete SBOM should include all indirect dependencies (e.g., pytz, typing-extensions, etc.)
+
 asgiref==3.8.1
 Django==5.1
 sqlparse==0.5.1

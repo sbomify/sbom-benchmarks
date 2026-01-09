@@ -1,0 +1,28 @@
+---
+name: JavaScript
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'javascript/**'
+      - '.github/workflows/javascript.yml'
+      - '.github/workflows/_sbom-benchmark.yml'
+  pull_request:
+    paths:
+      - 'javascript/**'
+      - '.github/workflows/javascript.yml'
+      - '.github/workflows/_sbom-benchmark.yml'
+
+jobs:
+  benchmark:
+    uses: ./.github/workflows/_sbom-benchmark.yml
+    with:
+      name: javascript
+      target_type: filesystem
+      target_path: target-repo/pnpm-lock.yaml
+      setup_commands: |
+        git clone --depth 1 --branch wrangler@3.99.0 https://github.com/cloudflare/workers-sdk.git target-repo
+      sbomify_input: target-repo/pnpm-lock.yaml
+      sbomify_input_type: lock_file
+      title: JavaScript (Cloudflare workers-sdk) Benchmark
