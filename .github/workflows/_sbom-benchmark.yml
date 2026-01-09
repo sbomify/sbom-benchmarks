@@ -124,7 +124,7 @@ jobs:
           path: "/tmp/syft.*.json"
 
   sbomify:
-    name: sbomify
+    name: sbomify action
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -133,33 +133,21 @@ jobs:
         if: inputs.setup_commands != ''
         run: ${{ inputs.setup_commands }}
 
-      - name: "CycloneDX: Generate SBOM"
+      - name: Generate SBOM
         uses: sbomify/github-action@master
         env:
           LOCK_FILE: ${{ inputs.sbomify_input_type == 'lock_file' && inputs.sbomify_input || '' }}
           DOCKER_IMAGE: ${{ inputs.sbomify_input_type == 'docker_image' && inputs.sbomify_input || '' }}
           OUTPUT_FILE: sbomify.cdx.json
-          OUTPUT_FORMAT: cyclonedx
           UPLOAD: "false"
           AUGMENT: "false"
           ENRICH: "true"
 
-      - name: "SPDX: Generate SBOM"
-        uses: sbomify/github-action@master
-        env:
-          LOCK_FILE: ${{ inputs.sbomify_input_type == 'lock_file' && inputs.sbomify_input || '' }}
-          DOCKER_IMAGE: ${{ inputs.sbomify_input_type == 'docker_image' && inputs.sbomify_input || '' }}
-          OUTPUT_FILE: sbomify.spdx.json
-          OUTPUT_FORMAT: spdx
-          UPLOAD: "false"
-          AUGMENT: "false"
-          ENRICH: "true"
-
-      - name: Upload SBOMs
+      - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.name }}-sbomify
-          path: "sbomify.*.json"
+          path: "sbomify.cdx.json"
 
   cyclonedx-python:
     name: CycloneDX Python
@@ -249,8 +237,9 @@ jobs:
 
       - name: Install sbomqs
         run: |
-          curl -L -o /tmp/sbomqs \
-            "https://github.com/interlynk-io/sbomqs/releases/download/v${SBOMQS_VERSION}/sbomqs-linux-amd64"
+          curl -L -o /tmp/sbomqs.tar.gz \
+            "https://github.com/interlynk-io/sbomqs/releases/download/v${SBOMQS_VERSION}/sbomqs_${SBOMQS_VERSION}_Linux_x86_64.tar.gz"
+          tar xzf /tmp/sbomqs.tar.gz -C /tmp
           chmod +x /tmp/sbomqs
 
       - name: Generate Summary Table
@@ -517,7 +506,7 @@ jobs:
           # Core tools - CycloneDX
           add_row "Trivy (${TRIVY_VERSION})" "CycloneDX" "$(score_cdx "${BENCHMARK_NAME}-trivy/trivy.cdx.json")"
           add_row "Syft (${SYFT_VERSION})" "CycloneDX" "$(score_cdx "${BENCHMARK_NAME}-syft/syft.cdx.json")"
-          add_row "sbomify" "CycloneDX" "$(score_cdx "${BENCHMARK_NAME}-sbomify/sbomify.cdx.json")"
+          add_row "sbomify action" "CycloneDX" "$(score_cdx "${BENCHMARK_NAME}-sbomify/sbomify.cdx.json")"
 
           # Extra tools - CycloneDX
           if [[ "$EXTRA_TOOLS" == *"cyclonedx-python"* ]]; then
@@ -527,10 +516,9 @@ jobs:
             add_row "sbom4python (${SBOM4PYTHON_VERSION})" "CycloneDX" "$(score_cdx "${BENCHMARK_NAME}-sbom4python/sbom4python.cdx.json")"
           fi
 
-          # Core tools - SPDX
+          # Core tools - SPDX (sbomify only supports CycloneDX output)
           add_row "Trivy (${TRIVY_VERSION})" "SPDX" "$(score_spdx "${BENCHMARK_NAME}-trivy/trivy.spdx.json")"
           add_row "Syft (${SYFT_VERSION})" "SPDX" "$(score_spdx "${BENCHMARK_NAME}-syft/syft.spdx.json")"
-          add_row "sbomify" "SPDX" "$(score_spdx "${BENCHMARK_NAME}-sbomify/sbomify.spdx.json")"
 
           # Extra tools - SPDX
           if [[ "$EXTRA_TOOLS" == *"sbom4python"* ]]; then
@@ -547,7 +535,7 @@ jobs:
           # Core tools - CycloneDX
           add_ntia_row "Trivy" "CycloneDX" "$(ntia_cdx "${BENCHMARK_NAME}-trivy/trivy.cdx.json")"
           add_ntia_row "Syft" "CycloneDX" "$(ntia_cdx "${BENCHMARK_NAME}-syft/syft.cdx.json")"
-          add_ntia_row "sbomify" "CycloneDX" "$(ntia_cdx "${BENCHMARK_NAME}-sbomify/sbomify.cdx.json")"
+          add_ntia_row "sbomify action" "CycloneDX" "$(ntia_cdx "${BENCHMARK_NAME}-sbomify/sbomify.cdx.json")"
 
           # Extra tools - CycloneDX
           if [[ "$EXTRA_TOOLS" == *"cyclonedx-python"* ]]; then
@@ -557,10 +545,9 @@ jobs:
             add_ntia_row "sbom4python" "CycloneDX" "$(ntia_cdx "${BENCHMARK_NAME}-sbom4python/sbom4python.cdx.json")"
           fi
 
-          # Core tools - SPDX
+          # Core tools - SPDX (sbomify only supports CycloneDX output)
           add_ntia_row "Trivy" "SPDX" "$(ntia_spdx "${BENCHMARK_NAME}-trivy/trivy.spdx.json")"
           add_ntia_row "Syft" "SPDX" "$(ntia_spdx "${BENCHMARK_NAME}-syft/syft.spdx.json")"
-          add_ntia_row "sbomify" "SPDX" "$(ntia_spdx "${BENCHMARK_NAME}-sbomify/sbomify.spdx.json")"
 
           # Extra tools - SPDX
           if [[ "$EXTRA_TOOLS" == *"sbom4python"* ]]; then
