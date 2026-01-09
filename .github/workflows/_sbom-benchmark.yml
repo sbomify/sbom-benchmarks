@@ -406,8 +406,9 @@ jobs:
             # SBOM-level checks
             local has_timestamp
             has_timestamp=$(jq -r '.creationInfo.created // empty' "$path" 2>/dev/null)
+            # Author should be Organization or Person, not just Tool
             local has_author
-            has_author=$(jq -r '.creationInfo.creators[0] // empty' "$path" 2>/dev/null)
+            has_author=$(jq -r '.creationInfo.creators[]? | select(startswith("Organization:") or startswith("Person:")) | . // empty' "$path" 2>/dev/null | head -1)
 
             # Component-level NTIA fields - single jq call for efficiency
             local counts
