@@ -46,7 +46,7 @@ on:
         default: ''
 
 env:
-  TRIVY_VERSION: 0.67.2
+  TRIVY_VERSION: 0.68.2
   SYFT_VERSION: 1.39.0
   SBOMQS_VERSION: 2.0.2
   CYCLONEDX_PYTHON_VERSION: 7.2.1
@@ -133,7 +133,7 @@ jobs:
         if: inputs.setup_commands != ''
         run: ${{ inputs.setup_commands }}
 
-      - name: "CycloneDX: Generate SBOM"
+      - name: Generate SBOM
         uses: sbomify/github-action@master
         env:
           LOCK_FILE: ${{ inputs.sbomify_input_type == 'lock_file' && inputs.sbomify_input || '' }}
@@ -163,7 +163,7 @@ jobs:
       - name: "CycloneDX: Generate SBOM"
         run: |
           cyclonedx-py requirements ${{ inputs.sbomify_input }} \
-            --schema-version 1.6 > /tmp/cyclonedx.cdx.json
+            -o /tmp/cyclonedx.cdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
@@ -249,60 +249,244 @@ jobs:
         run: |
           set +e  # Don't exit on error - some files may not exist
 
+          # Helper: safely convert value to integer, defaulting to 0
+          to_int() {
+            local val="${1:-0}"
+            # Remove any non-numeric characters and handle null/empty
+            val="${val//[^0-9]/}"
+            echo "${val:-0}"
+          }
+
+          # Helper: calculate duplication percentage
           calc_dup() {
-            local total=$1 unique=$2
-            if [ "$total" -eq 0 ]; then echo "N/A"; return; fi
+            local total=$(to_int "$1")
+            local unique=$(to_int "$2")
+            if [[ "$total" -eq 0 ]]; then
+              echo "N/A"
+              return
+            fi
             local dups=$((total - unique))
-            [ "$dups" -lt 0 ] && dups=0
-            echo "scale=2; ($dups / $total) * 100" | bc | xargs printf "%.2f%%"
+            [[ "$dups" -lt 0 ]] && dups=0
+            printf "%.2f%%" "$(echo "scale=2; $dups * 100 / $total" | bc)"
           }
 
+          # Helper: calculate percentage safely
+          calc_pct() {
+            local count=$(to_int "$1")
+            local total=$(to_int "$2")
+            if [[ "$total" -eq 0 ]]; then
+              echo "0"
+              return
+            fi
+            echo "scale=0; $count * 100 / $total" | bc
+          }
+
+          # Score CycloneDX SBOM
           score_cdx() {
-            local path=$1
-            if [ ! -f "$path" ]; then echo ""; return; fi
-            local result=$(/tmp/sbomqs score "$path" -j 2>/dev/null)
-            local total=$(jq '.components[] | .name' "$path" 2>/dev/null | wc -l)
-            local unique=$(jq '.components[] | .name' "$path" 2>/dev/null | sort -u | wc -l)
-            local version=$(echo "$result" | jq -r '.files[0].spec_version // "N/A"')
-            local score=$(echo "$result" | jq -r '.files[0].avg_score // "N/A"')
-            echo "$total|$unique|$version|$score"
+            local path="$1"
+            [[ ! -f "$path" ]] && return
+
+            # Get sbomqs results
+            local result
+            result=$(/tmp/sbomqs score "$path" -j 2>/dev/null) || result="{}"
+
+            # Extract component names once, then count
+            local names
+            names=$(jq -r '.components[]?.name // empty' "$path" 2>/dev/null)
+            local total=$(echo "$names" | grep -c . || echo 0)
+            local unique=$(echo "$names" | sort -u | grep -c . || echo 0)
+
+            local version
+            version=$(echo "$result" | jq -r '.files[0].spec_version // "N/A"' 2>/dev/null) || version="N/A"
+            local score
+            score=$(echo "$result" | jq -r '.files[0].avg_score // "N/A"' 2>/dev/null) || score="N/A"
+
+            echo "${total}|${unique}|${version}|${score}"
           }
 
+          # Score SPDX SBOM
           score_spdx() {
-            local path=$1
-            if [ ! -f "$path" ]; then echo ""; return; fi
-            local result=$(/tmp/sbomqs score "$path" -j 2>/dev/null)
-            local total=$(jq '.packages[] | .name' "$path" 2>/dev/null | wc -l)
-            local unique=$(jq '.packages[] | .name' "$path" 2>/dev/null | sort -u | wc -l)
-            local version=$(echo "$result" | jq -r '.files[0].spec_version // "N/A"')
-            local score=$(echo "$result" | jq -r '.files[0].avg_score // "N/A"')
-            echo "$total|$unique|$version|$score"
+            local path="$1"
+            [[ ! -f "$path" ]] && return
+
+            # Get sbomqs results
+            local result
+            result=$(/tmp/sbomqs score "$path" -j 2>/dev/null) || result="{}"
+
+            # Extract package names once, then count
+            local names
+            names=$(jq -r '.packages[]?.name // empty' "$path" 2>/dev/null)
+            local total=$(echo "$names" | grep -c . || echo 0)
+            local unique=$(echo "$names" | sort -u | grep -c . || echo 0)
+
+            local version
+            version=$(echo "$result" | jq -r '.files[0].spec_version // "N/A"' 2>/dev/null) || version="N/A"
+            local score
+            score=$(echo "$result" | jq -r '.files[0].avg_score // "N/A"' 2>/dev/null) || score="N/A"
+
+            echo "${total}|${unique}|${version}|${score}"
           }
 
-          add_row() {
-            local tool=$1 format=$2 data=$3
-            if [ -z "$data" ]; then return; fi
-            IFS='|' read -r total unique version score <<< "$data"
-            local dup=$(calc_dup "$total" "$unique")
-            echo "| $tool | $format ($version) | $total | $unique | $dup | $score |" >> ${GITHUB_STEP_SUMMARY}
+          # NTIA Minimum Elements check for CycloneDX
+          ntia_cdx() {
+            local path="$1"
+            [[ ! -f "$path" ]] && return
+
+            # Get total component count
+            local total
+            total=$(jq '.components | length // 0' "$path" 2>/dev/null) || total=0
+            total=$(to_int "$total")
+
+            # SBOM-level checks
+            local has_timestamp
+            has_timestamp=$(jq -r '.metadata.timestamp // empty' "$path" 2>/dev/null)
+            local has_author
+            has_author=$(jq -r '
+              .metadata.authors[0].name //
+              .metadata.manufacturer.name //
+              .metadata.supplier.name //
+              empty
+            ' "$path" 2>/dev/null)
+
+            # Component-level NTIA fields - single jq call for efficiency
+            local counts
+            counts=$(jq '{
+              with_supplier: [.components[]? | select(.supplier.name != null or .publisher != null)] | length,
+              with_version: [.components[]? | select(.version != null and .version != "")] | length,
+              with_purl: [.components[]? | select(.purl != null)] | length,
+              has_deps: (.dependencies | length // 0)
+            }' "$path" 2>/dev/null) || counts='{"with_supplier":0,"with_version":0,"with_purl":0,"has_deps":0}'
+
+            local with_supplier=$(echo "$counts" | jq -r '.with_supplier // 0')
+            local with_version=$(echo "$counts" | jq -r '.with_version // 0')
+            local with_purl=$(echo "$counts" | jq -r '.with_purl // 0')
+            local has_deps=$(echo "$counts" | jq -r '.has_deps // 0')
+
+            # Calculate percentages
+            local supplier_pct=$(calc_pct "$with_supplier" "$total")
+            local version_pct=$(calc_pct "$with_version" "$total")
+            local purl_pct=$(calc_pct "$with_purl" "$total")
+
+            # Format output with Y/N indicators
+            local ts_icon="N"
+            [[ -n "$has_timestamp" ]] && ts_icon="Y"
+            local author_icon="N"
+            [[ -n "$has_author" ]] && author_icon="Y"
+            local deps_icon="N"
+            [[ $(to_int "$has_deps") -gt 0 ]] && deps_icon="Y"
+
+            echo "${ts_icon}|${author_icon}|${supplier_pct}%|${version_pct}%|${purl_pct}%|${deps_icon}"
           }
+
+          # NTIA Minimum Elements check for SPDX
+          ntia_spdx() {
+            local path="$1"
+            [[ ! -f "$path" ]] && return
+
+            # Get total package count
+            local total
+            total=$(jq '.packages | length // 0' "$path" 2>/dev/null) || total=0
+            total=$(to_int "$total")
+
+            # SBOM-level checks
+            local has_timestamp
+            has_timestamp=$(jq -r '.creationInfo.created // empty' "$path" 2>/dev/null)
+            local has_author
+            has_author=$(jq -r '.creationInfo.creators[0] // empty' "$path" 2>/dev/null)
+
+            # Component-level NTIA fields - single jq call for efficiency
+            local counts
+            counts=$(jq '{
+              with_supplier: [.packages[]? | select(.supplier != null and .supplier != "" and .supplier != "NOASSERTION")] | length,
+              with_version: [.packages[]? | select(.versionInfo != null and .versionInfo != "" and .versionInfo != "NOASSERTION")] | length,
+              with_purl: [.packages[]? | select(.externalRefs[]? | .referenceType == "purl")] | length,
+              has_deps: (.relationships | length // 0)
+            }' "$path" 2>/dev/null) || counts='{"with_supplier":0,"with_version":0,"with_purl":0,"has_deps":0}'
+
+            local with_supplier=$(echo "$counts" | jq -r '.with_supplier // 0')
+            local with_version=$(echo "$counts" | jq -r '.with_version // 0')
+            local with_purl=$(echo "$counts" | jq -r '.with_purl // 0')
+            local has_deps=$(echo "$counts" | jq -r '.has_deps // 0')
+
+            # Calculate percentages
+            local supplier_pct=$(calc_pct "$with_supplier" "$total")
+            local version_pct=$(calc_pct "$with_version" "$total")
+            local purl_pct=$(calc_pct "$with_purl" "$total")
+
+            # Format output with Y/N indicators
+            local ts_icon="N"
+            [[ -n "$has_timestamp" ]] && ts_icon="Y"
+            local author_icon="N"
+            [[ -n "$has_author" ]] && author_icon="Y"
+            local deps_icon="N"
+            [[ $(to_int "$has_deps") -gt 0 ]] && deps_icon="Y"
+
+            echo "${ts_icon}|${author_icon}|${supplier_pct}%|${version_pct}%|${purl_pct}%|${deps_icon}"
+          }
+
+          # Add a row to the package detection table
+          add_row() {
+            local tool="$1"
+            local format="$2"
+            local data="$3"
+            [[ -z "$data" ]] && return
+
+            local total unique version score
+            IFS='|' read -r total unique version score <<< "$data"
+
+            # Validate we got all fields
+            [[ -z "$total" ]] && total=0
+            [[ -z "$unique" ]] && unique=0
+            [[ -z "$version" ]] && version="N/A"
+            [[ -z "$score" ]] && score="N/A"
+
+            local dup
+            dup=$(calc_dup "$total" "$unique")
+            echo "| $tool | $format ($version) | $total | $unique | $dup | $score |" >> "${GITHUB_STEP_SUMMARY}"
+          }
+
+          # Add a row to the NTIA table
+          add_ntia_row() {
+            local tool="$1"
+            local format="$2"
+            local data="$3"
+            [[ -z "$data" ]] && return
+
+            local ts author supplier version purl deps
+            IFS='|' read -r ts author supplier version purl deps <<< "$data"
+
+            # Set defaults for empty fields
+            [[ -z "$ts" ]] && ts="N"
+            [[ -z "$author" ]] && author="N"
+            [[ -z "$supplier" ]] && supplier="0%"
+            [[ -z "$version" ]] && version="0%"
+            [[ -z "$purl" ]] && purl="0%"
+            [[ -z "$deps" ]] && deps="N"
+
+            echo "| $tool | $format | $ts | $author | $supplier | $version | $purl | $deps |" >> "${GITHUB_STEP_SUMMARY}"
+          }
+
+          # === Generate Report ===
 
           # Header
-          if [ -n "$BENCHMARK_TITLE" ]; then
-            echo "## $BENCHMARK_TITLE" >> ${GITHUB_STEP_SUMMARY}
-            echo "" >> ${GITHUB_STEP_SUMMARY}
+          if [[ -n "$BENCHMARK_TITLE" ]]; then
+            echo "## $BENCHMARK_TITLE" >> "${GITHUB_STEP_SUMMARY}"
+            echo "" >> "${GITHUB_STEP_SUMMARY}"
           fi
 
           # Baseline (if exists)
           BASELINE_FILE="${BENCHMARK_NAME}-baseline/baseline.txt"
-          if [ -f "$BASELINE_FILE" ]; then
-            BASELINE_COUNT=$(wc -l < "$BASELINE_FILE")
-            echo "**Baseline:** $BASELINE_COUNT packages" >> ${GITHUB_STEP_SUMMARY}
-            echo "" >> ${GITHUB_STEP_SUMMARY}
+          if [[ -f "$BASELINE_FILE" ]]; then
+            BASELINE_COUNT=$(wc -l < "$BASELINE_FILE" | tr -d ' ')
+            echo "**Baseline:** ${BASELINE_COUNT} packages" >> "${GITHUB_STEP_SUMMARY}"
+            echo "" >> "${GITHUB_STEP_SUMMARY}"
           fi
 
-          echo "| Tool | Format | Packages | Unique | Duplication % | Quality Score |" >> ${GITHUB_STEP_SUMMARY}
-          echo "| -- | -- | -- | -- | -- | -- |" >> ${GITHUB_STEP_SUMMARY}
+          # === Package Detection Table ===
+          echo "### Package Detection" >> "${GITHUB_STEP_SUMMARY}"
+          echo "" >> "${GITHUB_STEP_SUMMARY}"
+          echo "| Tool | Format | Packages | Unique | Duplication % | Quality Score |" >> "${GITHUB_STEP_SUMMARY}"
+          echo "| -- | -- | -- | -- | -- | -- |" >> "${GITHUB_STEP_SUMMARY}"
 
           # Core tools - CycloneDX
           add_row "Trivy (${TRIVY_VERSION})" "CycloneDX" "$(score_cdx "${BENCHMARK_NAME}-trivy/trivy.cdx.json")"
@@ -325,3 +509,47 @@ jobs:
           if [[ "$EXTRA_TOOLS" == *"sbom4python"* ]]; then
             add_row "sbom4python (${SBOM4PYTHON_VERSION})" "SPDX" "$(score_spdx "${BENCHMARK_NAME}-sbom4python/sbom4python.spdx.json")"
           fi
+
+          # === NTIA Minimum Elements Table ===
+          echo "" >> "${GITHUB_STEP_SUMMARY}"
+          echo "### NTIA Minimum Elements" >> "${GITHUB_STEP_SUMMARY}"
+          echo "" >> "${GITHUB_STEP_SUMMARY}"
+          echo "| Tool | Format | Timestamp | Author | Supplier % | Version % | PURL % | Dependencies |" >> "${GITHUB_STEP_SUMMARY}"
+          echo "| -- | -- | -- | -- | -- | -- | -- | -- |" >> "${GITHUB_STEP_SUMMARY}"
+
+          # Core tools - CycloneDX
+          add_ntia_row "Trivy" "CycloneDX" "$(ntia_cdx "${BENCHMARK_NAME}-trivy/trivy.cdx.json")"
+          add_ntia_row "Syft" "CycloneDX" "$(ntia_cdx "${BENCHMARK_NAME}-syft/syft.cdx.json")"
+          add_ntia_row "sbomify" "CycloneDX" "$(ntia_cdx "${BENCHMARK_NAME}-sbomify/sbomify.cdx.json")"
+
+          # Extra tools - CycloneDX
+          if [[ "$EXTRA_TOOLS" == *"cyclonedx-python"* ]]; then
+            add_ntia_row "cyclonedx-python" "CycloneDX" "$(ntia_cdx "${BENCHMARK_NAME}-cyclonedx/cyclonedx.cdx.json")"
+          fi
+          if [[ "$EXTRA_TOOLS" == *"sbom4python"* ]]; then
+            add_ntia_row "sbom4python" "CycloneDX" "$(ntia_cdx "${BENCHMARK_NAME}-sbom4python/sbom4python.cdx.json")"
+          fi
+
+          # Core tools - SPDX
+          add_ntia_row "Trivy" "SPDX" "$(ntia_spdx "${BENCHMARK_NAME}-trivy/trivy.spdx.json")"
+          add_ntia_row "Syft" "SPDX" "$(ntia_spdx "${BENCHMARK_NAME}-syft/syft.spdx.json")"
+
+          # Extra tools - SPDX
+          if [[ "$EXTRA_TOOLS" == *"sbom4python"* ]]; then
+            add_ntia_row "sbom4python" "SPDX" "$(ntia_spdx "${BENCHMARK_NAME}-sbom4python/sbom4python.spdx.json")"
+          fi
+
+          # Legend
+          {
+            echo ""
+            echo "<details><summary>NTIA Field Legend</summary>"
+            echo ""
+            echo "- **Timestamp**: SBOM creation timestamp present (Y/N)"
+            echo "- **Author**: SBOM author/creator identified (Y/N)"
+            echo "- **Supplier %**: Percentage of components with supplier/publisher info"
+            echo "- **Version %**: Percentage of components with version info"
+            echo "- **PURL %**: Percentage of components with Package URL identifier"
+            echo "- **Dependencies**: Dependency relationships present (Y/N)"
+            echo ""
+            echo "</details>"
+          } >> "${GITHUB_STEP_SUMMARY}"

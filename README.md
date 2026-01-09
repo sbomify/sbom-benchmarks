@@ -65,7 +65,7 @@ Current tool versions used in benchmarks:
 
 | Tool | Version |
 |------|---------|
-| Trivy | 0.67.2 |
+| Trivy | 0.68.2 |
 | Syft | 1.39.0 |
 | sbomqs | 2.0.2 |
 | cyclonedx-bom | 7.2.1 |
