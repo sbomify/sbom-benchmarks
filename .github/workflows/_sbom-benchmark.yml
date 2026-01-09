@@ -133,21 +133,33 @@ jobs:
         if: inputs.setup_commands != ''
         run: ${{ inputs.setup_commands }}
 
-      - name: Generate SBOM
+      - name: "CycloneDX: Generate SBOM"
         uses: sbomify/github-action@master
         env:
           LOCK_FILE: ${{ inputs.sbomify_input_type == 'lock_file' && inputs.sbomify_input || '' }}
           DOCKER_IMAGE: ${{ inputs.sbomify_input_type == 'docker_image' && inputs.sbomify_input || '' }}
           OUTPUT_FILE: sbomify.cdx.json
+          OUTPUT_FORMAT: cyclonedx
           UPLOAD: "false"
           AUGMENT: "false"
           ENRICH: "true"
 
-      - name: Upload SBOM
+      - name: "SPDX: Generate SBOM"
+        uses: sbomify/github-action@master
+        env:
+          LOCK_FILE: ${{ inputs.sbomify_input_type == 'lock_file' && inputs.sbomify_input || '' }}
+          DOCKER_IMAGE: ${{ inputs.sbomify_input_type == 'docker_image' && inputs.sbomify_input || '' }}
+          OUTPUT_FILE: sbomify.spdx.json
+          OUTPUT_FORMAT: spdx
+          UPLOAD: "false"
+          AUGMENT: "false"
+          ENRICH: "true"
+
+      - name: Upload SBOMs
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.name }}-sbomify
-          path: "sbomify.cdx.json"
+          path: "sbomify.*.json"
 
   cyclonedx-python:
     name: CycloneDX Python
@@ -518,6 +530,7 @@ jobs:
           # Core tools - SPDX
           add_row "Trivy (${TRIVY_VERSION})" "SPDX" "$(score_spdx "${BENCHMARK_NAME}-trivy/trivy.spdx.json")"
           add_row "Syft (${SYFT_VERSION})" "SPDX" "$(score_spdx "${BENCHMARK_NAME}-syft/syft.spdx.json")"
+          add_row "sbomify" "SPDX" "$(score_spdx "${BENCHMARK_NAME}-sbomify/sbomify.spdx.json")"
 
           # Extra tools - SPDX
           if [[ "$EXTRA_TOOLS" == *"sbom4python"* ]]; then
@@ -547,6 +560,7 @@ jobs:
           # Core tools - SPDX
           add_ntia_row "Trivy" "SPDX" "$(ntia_spdx "${BENCHMARK_NAME}-trivy/trivy.spdx.json")"
           add_ntia_row "Syft" "SPDX" "$(ntia_spdx "${BENCHMARK_NAME}-syft/syft.spdx.json")"
+          add_ntia_row "sbomify" "SPDX" "$(ntia_spdx "${BENCHMARK_NAME}-sbomify/sbomify.spdx.json")"
 
           # Extra tools - SPDX
           if [[ "$EXTRA_TOOLS" == *"sbom4python"* ]]; then
