@@ -8,6 +8,11 @@ on:
       - 'go/**'
       - '.github/workflows/go.yml'
       - '.github/workflows/_sbom-benchmark.yml'
+  pull_request:
+    paths:
+      - 'go/**'
+      - '.github/workflows/go.yml'
+      - '.github/workflows/_sbom-benchmark.yml'
 
 jobs:
   benchmark:

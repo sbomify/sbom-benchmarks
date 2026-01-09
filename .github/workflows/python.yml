@@ -8,11 +8,16 @@ on:
       - 'python/**'
       - '.github/workflows/python.yml'
       - '.github/workflows/_sbom-benchmark.yml'
+  pull_request:
+    paths:
+      - 'python/**'
+      - '.github/workflows/python.yml'
+      - '.github/workflows/_sbom-benchmark.yml'
 
 jobs:
   benchmark:
     uses: ./.github/workflows/_sbom-benchmark.yml
-        with:
+    with:
       name: python
       target_type: filesystem
       target_path: python/requirements.txt
