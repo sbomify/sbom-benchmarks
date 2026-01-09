@@ -138,7 +138,7 @@ jobs:
         env:
           LOCK_FILE: ${{ inputs.sbomify_input_type == 'lock_file' && inputs.sbomify_input || '' }}
           DOCKER_IMAGE: ${{ inputs.sbomify_input_type == 'docker_image' && inputs.sbomify_input || '' }}
-          OUTPUT_FILE: /tmp/sbomify.cdx.json
+          OUTPUT_FILE: sbomify.cdx.json
           UPLOAD: "false"
           AUGMENT: "false"
           ENRICH: "true"
@@ -147,7 +147,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.name }}-sbomify
-          path: "/tmp/sbomify.cdx.json"
+          path: "sbomify.cdx.json"
 
   cyclonedx-python:
     name: CycloneDX Python
