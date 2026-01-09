@@ -286,9 +286,9 @@ jobs:
             local path="$1"
             [[ ! -f "$path" ]] && return
 
-            # Get sbomqs results
+            # Get sbomqs results (use --json flag for v2.0+)
             local result
-            result=$(/tmp/sbomqs score "$path" -j 2>/dev/null) || result="{}"
+            result=$(/tmp/sbomqs score --json "$path" 2>/dev/null) || result="{}"
 
             # Extract component names once, then count
             local names
@@ -296,10 +296,17 @@ jobs:
             local total=$(echo "$names" | grep -c . || echo 0)
             local unique=$(echo "$names" | sort -u | grep -c . || echo 0)
 
+            # Get spec version directly from SBOM
             local version
-            version=$(echo "$result" | jq -r '.files[0].spec_version // "N/A"' 2>/dev/null) || version="N/A"
+            version=$(jq -r '.specVersion // "N/A"' "$path" 2>/dev/null) || version="N/A"
+
+            # Get quality score from sbomqs (v2.0 uses sbom_quality_score, v1.x used avg_score)
             local score
-            score=$(echo "$result" | jq -r '.files[0].avg_score // "N/A"' 2>/dev/null) || score="N/A"
+            score=$(echo "$result" | jq -r '.files[0].sbom_quality_score // .files[0].avg_score // "N/A"' 2>/dev/null) || score="N/A"
+            # Round to 1 decimal place if numeric
+            if [[ "$score" =~ ^[0-9.]+$ ]]; then
+              score=$(printf "%.1f" "$score")
+            fi
 
             echo "${total}|${unique}|${version}|${score}"
           }
@@ -309,9 +316,9 @@ jobs:
             local path="$1"
             [[ ! -f "$path" ]] && return
 
-            # Get sbomqs results
+            # Get sbomqs results (use --json flag for v2.0+)
             local result
-            result=$(/tmp/sbomqs score "$path" -j 2>/dev/null) || result="{}"
+            result=$(/tmp/sbomqs score --json "$path" 2>/dev/null) || result="{}"
 
             # Extract package names once, then count
             local names
@@ -319,10 +326,17 @@ jobs:
             local total=$(echo "$names" | grep -c . || echo 0)
             local unique=$(echo "$names" | sort -u | grep -c . || echo 0)
 
+            # Get spec version directly from SBOM (strip "SPDX-" prefix)
             local version
-            version=$(echo "$result" | jq -r '.files[0].spec_version // "N/A"' 2>/dev/null) || version="N/A"
+            version=$(jq -r '.spdxVersion // "N/A"' "$path" 2>/dev/null | sed 's/^SPDX-//') || version="N/A"
+
+            # Get quality score from sbomqs (v2.0 uses sbom_quality_score, v1.x used avg_score)
             local score
-            score=$(echo "$result" | jq -r '.files[0].avg_score // "N/A"' 2>/dev/null) || score="N/A"
+            score=$(echo "$result" | jq -r '.files[0].sbom_quality_score // .files[0].avg_score // "N/A"' 2>/dev/null) || score="N/A"
+            # Round to 1 decimal place if numeric
+            if [[ "$score" =~ ^[0-9.]+$ ]]; then
+              score=$(printf "%.1f" "$score")
+            fi
 
             echo "${total}|${unique}|${version}|${score}"
           }
