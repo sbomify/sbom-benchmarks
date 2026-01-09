@@ -23,6 +23,7 @@ jobs:
       target_path: target-repo
       setup_commands: |
         git clone --depth 1 --branch 0.24.5 https://github.com/cloudflare/quiche.git target-repo
+        cd target-repo && cargo generate-lockfile
       sbomify_input: target-repo/Cargo.lock
       sbomify_input_type: lock_file
       title: Rust (Cloudflare quiche 0.24.5) Benchmark
